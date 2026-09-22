@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1B3A">
+<title>Jaryq Jol</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="bar">
+  <h1 class="title">Jaryq Jol</h1>
+  <div class="bar-actions">
+    <button id="speed-btn" class="icon-btn" type="button" aria-label="Скорость речи">
+      <span id="speed-icon" aria-hidden="true">››</span>
+    </button>
+    <button id="lang-btn" class="icon-btn wide" type="button" aria-label="Сменить язык">
+      <span id="lang-label" aria-hidden="true">Қазақша</span>
+    </button>
+  </div>
+</header>
+
+<main class="screen">
+
+  <!--
+    Панель занимает большую часть экрана и сама работает кнопкой.
+    Не видя экрана, попасть пальцем в кнопку внизу трудно, а промахнуться
+    мимо половины экрана почти невозможно. Двойное касание, а не одиночное:
+    одиночным пользователь просто нащупывает интерфейс.
+  -->
+  <div id="tap-area" class="panel" role="button" tabindex="0"
+       aria-label="Последнее озвученное" aria-describedby="tap-hint">
+    <p id="panel-label" class="panel-label">Последнее озвученное:</p>
+    <p id="panel-text" class="panel-text" aria-live="polite"></p>
+    <p id="tap-hint" class="visually-hidden">
+      Дважды коснитесь экрана, чтобы описать обстановку.
+    </p>
+  </div>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <button id="describe-btn" class="action primary" type="button">
+    <span class="action-icon" aria-hidden="true">◎</span>
+    <span class="action-label">Описать обстановку</span>
+  </button>
+
+  <button id="read-btn" class="action" type="button">
+    <span class="action-icon" aria-hidden="true">≡</span>
+    <span class="action-label">Прочитать текст</span>
+  </button>
+
+  <button id="where-btn" class="action" type="button">
+    <span class="action-icon" aria-hidden="true">⌖</span>
+    <span class="action-label">Где я</span>
+  </button>
+
+  <div class="row">
+    <button id="repeat-btn" class="action" type="button">
+      <span class="action-icon" aria-hidden="true">↺</span>
+      <span class="action-label">Повторить</span>
+    </button>
+    <button id="stop-btn" class="action" type="button">
+      <span class="action-icon" aria-hidden="true">■</span>
+      <span class="action-label">Остановить</span>
+    </button>
+  </div>
+</main>
+
+<!--
+  Видео скрыто от глаз и от скринридера: это рабочий буфер для кадра,
+  а не содержимое, которое нужно озвучивать. playsinline и muted
+  обязательны, иначе iOS Safari откроет поток на весь экран.
+-->
+<video id="cam" playsinline muted autoplay aria-hidden="true"></video>
+<canvas id="frame" aria-hidden="true"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
+
+<script src="js/i18n.js" defer></script>
+<script src="js/labels.js" defer></script>
+<script src="js/speech.js" defer></script>
+<script src="js/camera.js" defer></script>
+<script src="js/ocr.js" defer></script>
+<script src="js/vision.js" defer></script>
+<script src="js/navigation.js" defer></script>
+<script src="js/app.js" defer></script>
+
+</body>
+</html>

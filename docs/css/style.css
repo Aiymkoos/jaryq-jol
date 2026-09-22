@@ -1,0 +1,193 @@
+/*
+  Контраст и размеры взяты из Qamqor Vision и проверены по WCAG 2.1:
+  жёлтый на тёмно-синем даёт около 11:1 при минимуме 4.5:1 (критерий 1.4.3),
+  зоны нажатия 88px при минимуме 44px (критерий 2.5.5).
+*/
+:root {
+  --bg: #0B1B3A;
+  --surface: #12264F;
+  --accent: #FFD60A;
+  --accent-dim: #C9A900;
+  --text: #FFFFFF;
+  --danger: #FF6B5A;
+  --tap: 88px;
+  --gap: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Плавный зум по двойному тапу перехватил бы жест описания обстановки. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Верхняя панель --- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  background: var(--surface);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.bar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0 12px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.icon-btn.wide { min-width: 104px; }
+
+/* --- Основной экран --- */
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.panel {
+  flex: 1;
+  min-height: 140px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--surface);
+  overflow-y: auto;
+  cursor: pointer;
+}
+
+.panel-label {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Речь дублируется на экране — для слабовидящих с остатком зрения
+   и для зрячих помощников рядом. */
+.panel-text {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.status {
+  min-height: 1.5rem;
+  font-size: 1rem;
+  color: var(--accent-dim);
+}
+
+.status.error { color: var(--danger); }
+
+/* --- Кнопки действий --- */
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 16px;
+  border: 3px solid var(--accent);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.action-icon { font-size: 1.5rem; }
+
+.row {
+  display: flex;
+  gap: var(--gap);
+}
+
+.row .action { flex: 1; }
+
+/* Видимая рамка фокуса нужна тем, кто ходит по интерфейсу с клавиатуры
+   или с подключённым к телефону физическим управлением. */
+:focus-visible {
+  outline: 4px solid #FFFFFF;
+  outline-offset: 3px;
+}
+
+/* --- Служебное --- */
+
+/* Камера — рабочий буфер для кадра, показывать её незачем.
+   display:none остановил бы поток на части браузеров, поэтому
+   элемент убирается за пределы экрана. */
+#cam, #frame {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
