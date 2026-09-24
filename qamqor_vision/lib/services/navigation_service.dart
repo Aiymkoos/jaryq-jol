@@ -4,6 +4,21 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+/// Street and house first, then district; the city only when there is no
+/// street. Same rule as the web app's address.js.
+String spokenAddress(Map<String, dynamic>? a) {
+  if (a == null) return '';
+  final street = a['road'] ?? a['pedestrian'] ?? a['footway'];
+  final area = a['suburb'] ?? a['neighbourhood'] ?? a['city_district'];
+  final city = a['city'] ?? a['town'] ?? a['village'];
+  final house = a['house_number'];
+  return [
+    if (street != null) house != null ? '$street, $house' : '$street',
+    if (area != null) '$area',
+    if (street == null && city != null) '$city',
+  ].join(', ');
+}
+
 class Place {
   const Place(this.name, this.point);
   final String name;
@@ -121,6 +136,34 @@ class NavigationService {
         .toList();
     _cache[q] = result;
     return result;
+  }
+
+  /// Spoken address at [point], or empty when the map knows none there.
+  Future<String> addressAt(LatLng point, {required bool kk}) async {
+    await _throttle();
+    final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+      'lat': point.latitude.toStringAsFixed(6),
+      'lon': point.longitude.toStringAsFixed(6),
+      'format': 'jsonv2',
+      'zoom': '18',
+      'accept-language': kk ? 'kk,ru' : 'ru',
+    });
+    // Shorter than search: the person is standing still waiting to hear it.
+    final response = await _client
+        .get(
+          uri,
+          headers: {
+            'User-Agent': 'JaryqJol/1.0 (accessible walking prototype)',
+          },
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) throw StateError('address_unavailable');
+    final data = jsonDecode(response.body);
+    return spokenAddress(
+      data is Map<String, dynamic>
+          ? data['address'] as Map<String, dynamic>?
+          : null,
+    );
   }
 
   Future<WalkRoute> route(LatLng from, Place to) async {

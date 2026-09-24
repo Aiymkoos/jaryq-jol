@@ -52,8 +52,21 @@ class MainActivity : FlutterActivity() {
                         tess.setImage(bitmap)
                         val text = tess.getUTF8Text()?.trim() ?: ""
                         val confidence = tess.meanConfidence()
-                        val safeText = if (confidence >= 65) text else ""
-                        runOnUiThread { result.success(mapOf("text" to safeText, "confidence" to confidence / 100.0)) }
+                        // One unsure word can be a negation or a dosage digit, so the
+                        // mean is not enough: reject the whole reading instead of trimming it.
+                        val wordConfidences = mutableListOf<Float>()
+                        val words = tess.resultIterator
+                        if (words != null) {
+                            val level = TessBaseAPI.PageIteratorLevel.RIL_WORD
+                            words.begin()
+                            do {
+                                if (!words.getUTF8Text(level).isNullOrBlank()) wordConfidences.add(words.confidence(level))
+                            } while (words.next(level))
+                            words.delete()
+                        }
+                        val sure = confidence >= 65 && wordConfidences.isNotEmpty() && wordConfidences.all { it >= 60f }
+                        val safeText = if (sure) text else ""
+                        runOnUiThread { result.success(mapOf("text" to safeText, "confidence" to (if (sure) confidence / 100.0 else 0.0))) }
                     } catch (e: Exception) {
                         runOnUiThread { result.error("ocr_failed", e.message, null) }
                     } finally { bitmap?.recycle(); tess.recycle() }

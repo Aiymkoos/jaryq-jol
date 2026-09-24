@@ -184,21 +184,38 @@ class _CompanionScreenState extends State<CompanionScreen>
 
   Future<void> _where() => _run(() async {
     final p = await _locate();
-    return tr(
-      'Координаты ${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}. Точность GPS примерно ${p.accuracy.round()} метров.',
-      'Координаттар ${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}. GPS дәлдігі шамамен ${p.accuracy.round()} метр.',
+    final accuracy = p.accuracy.round();
+    final coordinates = tr(
+      'Координаты ${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}. Точность GPS примерно $accuracy метров.',
+      'Координаттар ${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}. GPS дәлдігі шамамен $accuracy метр.',
     );
+    if (!mounted || !await _networkConsent()) return coordinates;
+    try {
+      final address = await _navigation.addressAt(
+        LatLng(p.latitude, p.longitude),
+        kk: kk,
+      );
+      if (address.isEmpty) return coordinates;
+      return tr(
+        'Примерный адрес: $address. Точность GPS примерно $accuracy метров.',
+        'Шамамен мекенжайыңыз: $address. GPS дәлдігі шамамен $accuracy метр.',
+      );
+    } catch (_) {
+      // Without the network the address is unknown, but coordinates still
+      // beat silence.
+      return coordinates;
+    }
   });
   Future<bool> _networkConsent() async {
     if (_consent) return true;
     final allowed = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text(tr('Построить маршрут', 'Бағыт құру')),
+        title: Text(tr('Карты и адреса', 'Карталар мен мекенжайлар')),
         content: Text(
           tr(
-            'Поиск адреса и координаты начала и конца маршрута отправляются сервисам OpenStreetMap. Фотографии остаются на устройстве.',
-            'Мекенжай іздеуі мен маршруттың бастапқы және соңғы координаттары OpenStreetMap сервистеріне жіберіледі. Суреттер құрылғыда қалады.',
+            'Для поиска места, определения адреса и маршрута адрес и координаты отправляются сервисам OpenStreetMap. Фотографии остаются на устройстве.',
+            'Орынды іздеу, мекенжайды анықтау және маршрут құру үшін мекенжай мен координаттар OpenStreetMap сервистеріне жіберіледі. Суреттер құрылғыда қалады.',
           ),
         ),
         actions: [
