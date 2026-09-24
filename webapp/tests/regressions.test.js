@@ -19,6 +19,26 @@ test('object recognition retries failed model download and never estimates dista
  let calls=0;const c=context({cocoSsd:{load:async()=>{if(++calls===1)throw Error('offline');return {detect:async()=>[{bbox:[0,0,100,100],class:'car',score:.9}]}}}});
  load(c,'i18n.js','I18N');load(c,'labels.js','LABELS');const v=load(c,'vision.js','Vision');await assert.rejects(v.observe({width:100,height:100}));const result=v.describe(await v.observe({width:100,height:100}),'ru');assert.match(result,/Машина/);assert.doesNotMatch(result,/близко|далеко/);
 });
+function webVision(data){
+ let output;const tags={
+  video:()=>({style:{},setAttribute(){},async play(){},remove(){},videoWidth:1280,videoHeight:960}),
+  canvas:()=>({getContext:()=>({drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4).fill(255)})})}),
+  script:()=>({})};
+ const c=context({window:{},Tesseract:{createWorker:async()=>({recognize:async(image,options,out)=>{output=out;return {data};}})},
+  navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}},
+  document:{createElement:t=>tags[t](),body:{append(){}},head:{appendChild:s=>queueMicrotask(()=>s.onload())}}});
+ vm.runInContext(readFileSync(new URL('../vision.js',import.meta.url),'utf8'),c);
+ return {read:async()=>JSON.parse(await c.window.jaryq.capture('text','rus+kaz')),output:()=>output};
+}
+const blocks=words=>[{paragraphs:[{lines:[{words}]}]}];
+test('published OCR rejects a confident average that hides an unsure dosage digit',async()=>{
+ const v=webVision({text:'Аспирин 100 мг',confidence:80,blocks:blocks([{text:'Аспирин',confidence:95},{text:'100',confidence:30},{text:'мг',confidence:94}])});
+ assert.equal((await v.read()).text,'');assert.equal(v.output()?.blocks,true);
+});
+test('published OCR reads a fully confident label with its line breaks',async()=>{
+ const v=webVision({text:'Аспирин 100 мг\nДәрілік зат\n',confidence:95,blocks:blocks([{text:'Аспирин',confidence:96},{text:'100',confidence:95},{text:'мг',confidence:94},{text:'Дәрілік',confidence:94},{text:'зат',confidence:96}])});
+ assert.equal((await v.read()).text,'Аспирин 100 мг\nДәрілік зат');
+});
 test('camera releases tracks after failed video playback',async()=>{
  let stopped=0;const video={setAttribute(){},play:async()=>{throw Error('play failed')}};
  const c=context({navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++}}]})}},document:{getElementById:()=>video}});
@@ -48,7 +68,7 @@ test('address names a footway and house without unnecessary country',()=>{assert
 function mainApp(){
  const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{value:'',dataset:{},hidden:false,open:false,classList:{remove(){},add(){},toggle(){},contains(){return false}},replaceChildren(){},append(){},setAttribute(){},removeAttribute(){},showModal(){this.open=true},close(){this.open=false},focus(){}});return elements.get(id)};
  const fix=deferred();let watches=0;const c=context({URL,URLSearchParams,AbortController,setInterval,clearInterval,Progress,guidance,meters:(a,b)=>0,parseRoute(){},instruction:()=>'',command(){},announcementKey:()=>'',spokenAddress,fetch:async()=>({json:async()=>({})}),localStorage:{getItem:()=>null},navigator:{onLine:true,geolocation:{getCurrentPosition:resolve=>fix.promise.then(resolve),watchPosition(){watches++;return 1},clearWatch(){}}},document:{hidden:false,documentElement:{classList:{contains(){return false}}},querySelectorAll:()=>[],querySelector:()=>el('searchbutton'),getElementById:el,addEventListener(){}},window:{addEventListener(){},jaryq:{cancel(){}}}});
- const code=readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
+ const code=readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
  vm.runInContext(code+"\nglobalThis.hooks={startGuidance,stopAll,setRoute:r=>{route=r;progress=new Progress(r)}};",c);return {c,fix,watches:()=>watches};
 }
 test('Stop during GPS startup cannot reactivate guidance',async()=>{const {c,fix,watches}=mainApp();c.hooks.setRoute(route);const pending=c.hooks.startGuidance();c.hooks.stopAll();fix.resolve({coords:{latitude:43.25,longitude:76.94,accuracy:5},timestamp:Date.now()});await pending;assert.equal(watches(),0)});

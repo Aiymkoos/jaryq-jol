@@ -33,10 +33,14 @@ window.jaryq = (() => {
       if(mode==='text'){
         await script('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js');
         worker??=await Tesseract.createWorker('rus+kaz',1,{logger:()=>{}});
-        const {data}=await worker.recognize(canvas);
-        // Reject whole uncertain output; do not silently delete low-confidence words.
-        const text=data.confidence>=65?data.text.trim():'';
-        return JSON.stringify({text,confidence:data.confidence/100});
+        // Tesseract.js 6 returns per-word confidence only when blocks are requested.
+        const {data}=await worker.recognize(canvas,{},{blocks:true});
+        const words=(data.blocks||[]).flatMap(b=>b.paragraphs).flatMap(p=>p.lines).flatMap(l=>l.words).filter(w=>(w.text||'').trim());
+        // One unsure word can be a negation or a dosage digit, so an average
+        // score is not enough: reject the whole reading instead of trimming it.
+        const sure=Number.isFinite(data.confidence)&&data.confidence>=65&&words.length>0&&words.every(w=>Number.isFinite(w.confidence)&&w.confidence>=60);
+        const text=sure?data.text.trim():'';
+        return JSON.stringify({text,confidence:sure?data.confidence/100:0});
       }
       await script('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
       await script('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
