@@ -12,6 +12,7 @@
   let lang = 'ru';
   let lastSpoken = '';
   let busy = false;
+  let operation = 0;
   let greeted = false;
 
   const t = () => I18N[lang];
@@ -33,7 +34,7 @@
       if (savedLang && I18N[savedLang]) lang = savedLang;
 
       const savedRate = localStorage.getItem('rate');
-      while (savedRate && Speech.rate !== savedRate) Speech.cycleRate();
+      while (['slow', 'normal', 'fast'].includes(savedRate) && Speech.rate !== savedRate) Speech.cycleRate();
     } catch (_) { /* значения по умолчанию уже выставлены */ }
   }
 
@@ -53,6 +54,7 @@
 
   function setBusy(value) {
     busy = value;
+    el('stop-btn').disabled = !value && !Speech.isSpeaking;
     ['describe-btn', 'read-btn', 'where-btn'].forEach((id) => {
       el(id).disabled = value;
     });
@@ -110,6 +112,7 @@
 
   async function describeScene() {
     if (busy) return;
+    const token = ++operation;
     setBusy(true);
     // Пользователь не видит индикатор загрузки, поэтому о начале работы
     // сообщаем голосом.
@@ -117,48 +120,59 @@
 
     try {
       const canvas = await Camera.capture();
+      if (token !== operation) return;
       status(t().loadingModel);
       const observation = await Vision.observe(canvas);
+      if (token !== operation) return;
       status('');
       say(Vision.describe(observation, lang));
     } catch (err) {
+      if (token !== operation) return;
       status('');
       say(typeof err === 'string' ? cameraMessage(err) : t().recognitionFailed);
     } finally {
       setBusy(false);
+      status('');
     }
   }
 
   async function readText() {
     if (busy) return;
+    const token = ++operation;
     setBusy(true);
     say(t().readingText);
 
     try {
       const canvas = await Camera.capture();
+      if (token !== operation) return;
       status(t().loadingModel);
 
       const result = await OCR.read(canvas, (p) => {
-        status(`${Math.round(p * 100)}%`);
+        if (token === operation) status(`${Math.round(p * 100)}%`);
       });
       status('');
 
+      if (token !== operation) return;
       say(result.text ? `${t().textIntro} ${result.text}` : t().noTextFound);
     } catch (err) {
+      if (token !== operation) return;
       status('');
       say(typeof err === 'string' ? cameraMessage(err) : t().recognitionFailed);
     } finally {
       setBusy(false);
+      status('');
     }
   }
 
   async function whereAmI() {
     if (busy) return;
+    const token = ++operation;
     setBusy(true);
     say(t().locating);
 
     try {
       const place = await Navigation.whereAmI(lang);
+      if (token !== operation) return;
       if (!place.text) {
         say(t().locationUnknown);
       } else {
@@ -166,9 +180,11 @@
         say(`${t().youAreAt} ${place.text}.${warn}`);
       }
     } catch (err) {
+      if (token !== operation) return;
       say(navMessage(err));
     } finally {
       setBusy(false);
+      status('');
     }
   }
 
@@ -183,6 +199,9 @@
   }
 
   function stop() {
+    operation++;
+    Camera.stop();
+    status('');
     Speech.stop();
     panelText.textContent = t().stopped;
     lastSpoken = t().stopped;
@@ -221,7 +240,7 @@
     loadSettings();
     Speech.setLanguage(lang);
     Speech.onChange = () => {
-      el('stop-btn').disabled = !Speech.isSpeaking;
+      el('stop-btn').disabled = !busy && !Speech.isSpeaking;
     };
     render();
     el('stop-btn').disabled = true;
@@ -260,5 +279,7 @@
     }
   }
 
+  window.addEventListener('pagehide', stop);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
   init();
 })();

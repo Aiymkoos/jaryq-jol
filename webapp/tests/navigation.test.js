@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {Progress,command,instruction,parseRoute,meters} from '../navigation.js';
+const p=(x,y=0)=>({lat:43.25+y/111320,lon:76.94+x/(111320*Math.cos(43.25*Math.PI/180))});
+const route={points:[p(0),p(100),p(200),p(300)],steps:[{point:p(0),type:'depart',bearing:90,road:''},{point:p(100),type:'turn',modifier:'left',road:'Тест'},{point:p(300),type:'arrive',road:''}],destination:{point:p(300)},distance:300};
+test('uncertain and stale GPS cannot advance or announce arrival',()=>{const g=new Progress(route);assert.equal(g.update(p(300),100,1000,1000).state,'uncertain');assert.equal(g.along,0);assert.equal(g.update(p(300),5,1000,30000).state,'uncertain');assert.equal(g.arrived,false)});
+test('requires three off-route fixes and recovers on route',()=>{const g=new Progress(route);assert.notEqual(g.update(p(10,100),5,1000,1000).state,'offroute');g.update(p(10,100),5,2000,2000);assert.equal(g.update(p(10,100),5,3000,3000).state,'offroute');assert.equal(g.update(p(10),5,4000,4000).state,'tracking')});
+test('arrival requires traversing route and two precise consecutive fixes',()=>{const g=new Progress(route);for(let x=0;x<=260;x+=20)g.update(p(x),5,1000+x*100,1000+x*100);assert.notEqual(g.update(p(300),5,40000,40000).state,'arrived');assert.equal(g.update(p(300),5,41000,41000).state,'arrived')});
+test('duplicate GPS fix does not satisfy arrival confirmation',()=>{const g=new Progress(route);for(let x=0;x<=300;x+=20)g.update(p(x),5,1000+x*100,1000+x*100);const before=g.arrivalCount;assert.equal(g.update(p(300),5,31000,31000).state,'duplicate');assert.equal(g.arrivalCount,before)});
+test('command parser preserves address and gives stop highest priority',()=>{assert.deepEqual(command('Построй маршрут до Парк Горького'),{action:'search',query:'парк горького'});assert.equal(command('стоп прочитай текст').action,'stop');assert.equal(command('мәтінді оқып бер').action,'text');assert.equal(command('Айналада не бар?').action,'scene')});
+test('instructions support both languages and do not claim a safe crossing',()=>{assert.match(instruction(route.steps[1]),/налево/);assert.match(instruction(route.steps[1],true),/Солға/);assert.match(instruction({type:'roundabout'}),/Проверьте переход/)});
+test('route parser rejects empty/malformed routing responses',()=>{assert.throws(()=>parseRoute({code:'NoRoute'},{}));assert.throws(()=>parseRoute({code:'Ok',routes:[]},{}));});
+test('distance is in metres',()=>assert.ok(Math.abs(meters(p(0),p(100))-100)<1));

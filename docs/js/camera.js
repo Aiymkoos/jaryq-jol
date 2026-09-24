@@ -14,6 +14,7 @@ const CameraError = {
 
 const Camera = (() => {
   let stream = null;
+  let generation = 0;
   const video = () => document.getElementById('cam');
   const canvas = () => document.getElementById('frame');
 
@@ -37,8 +38,9 @@ const Camera = (() => {
       throw CameraError.INSECURE;
     }
 
+    const token = generation;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      const acquired = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
           width: { ideal: 1280 },
@@ -46,6 +48,8 @@ const Camera = (() => {
         },
         audio: false,
       });
+      if (token !== generation) { acquired.getTracks().forEach(t => t.stop()); throw CameraError.FAILED; }
+      stream = acquired;
     } catch (err) {
       throw classify(err);
     }
@@ -80,19 +84,18 @@ const Camera = (() => {
   }
 
   async function capture() {
-    await start();
-
-    const el = video();
-    const cv = canvas();
-    if (!el.videoWidth || !el.videoHeight) throw CameraError.FAILED;
-
-    cv.width = el.videoWidth;
-    cv.height = el.videoHeight;
-    cv.getContext('2d').drawImage(el, 0, 0, cv.width, cv.height);
-    return cv;
+    try {
+      await start();
+      const el = video(), cv = canvas();
+      if (!el.videoWidth || !el.videoHeight) throw CameraError.FAILED;
+      cv.width = el.videoWidth; cv.height = el.videoHeight;
+      cv.getContext('2d').drawImage(el, 0, 0, cv.width, cv.height);
+      return cv;
+    } finally { stop(); }
   }
 
   function stop() {
+    generation++;
     if (!stream) return;
     stream.getTracks().forEach((t) => t.stop());
     stream = null;

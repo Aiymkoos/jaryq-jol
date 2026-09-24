@@ -36,7 +36,7 @@ const Vision = (() => {
       model = m;
       return m;
     });
-    return loading;
+    return loading.catch(err => { loading = null; throw err; });
   }
 
   function toObstacle(prediction, width, height) {
@@ -101,7 +101,7 @@ const Vision = (() => {
       const subject = name
         ? name.charAt(0).toUpperCase() + name.slice(1)
         : t.obstacle;
-      parts.push(`${subject} ${t[main.zone]}, ${t[main.proximity]}.`);
+      parts.push(`${subject} ${t[main.zone]}.`);
     }
 
     // Множество убирает повторы: четыре стула в кадре должны прозвучать

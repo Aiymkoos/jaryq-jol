@@ -1,0 +1,10 @@
+webapp/dist/
+node_modules/
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+**/key.properties
+.openai/
+.sites-runtime/
