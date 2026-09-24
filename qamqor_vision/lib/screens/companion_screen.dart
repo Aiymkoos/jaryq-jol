@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -76,7 +74,7 @@ class _CompanionScreenState extends State<CompanionScreen>
       _positions?.cancel();
       _positions = null;
       _watchdog?.cancel();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _listening = false;
           _guiding = false;
@@ -85,6 +83,7 @@ class _CompanionScreenState extends State<CompanionScreen>
             'Бағыттау тоқтатылды. Қолданбаға оралып, жалғастырыңыз.',
           );
         });
+      }
     }
   }
 
@@ -113,13 +112,14 @@ class _CompanionScreenState extends State<CompanionScreen>
       final result = await action();
       if (mounted && token == _operation) await _say(result);
     } catch (_) {
-      if (mounted && token == _operation)
+      if (mounted && token == _operation) {
         await _say(
           tr(
             'Не удалось выполнить действие. Проверьте разрешения, освещение и интернет. Попробуйте ещё раз.',
             'Әрекет орындалмады. Рұқсаттарды, жарықты және интернетті тексеріп, қайталаңыз.',
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -161,14 +161,17 @@ class _CompanionScreenState extends State<CompanionScreen>
           );
   });
   Future<Position> _locate() async {
-    if (!await Geolocator.isLocationServiceEnabled())
+    if (!await Geolocator.isLocationServiceEnabled()) {
       throw StateError('location_off');
+    }
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied)
+    if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+    }
     if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever)
+        permission == LocationPermission.deniedForever) {
       throw StateError('location_denied');
+    }
     final p = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -241,22 +244,24 @@ class _CompanionScreenState extends State<CompanionScreen>
     if (!await _networkConsent()) return;
     await _run(() async {
       final p = await _locate();
-      if (p.accuracy > 35)
+      if (p.accuracy > 35) {
         return tr(
           'GPS пока неточен. Подождите на открытом месте и повторите.',
           'GPS дәл емес. Ашық жерде күтіп, қайталаңыз.',
         );
+      }
       final r = await _navigation.route(
         LatLng(p.latitude, p.longitude),
         destination,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _route = r;
           _progress = RouteProgress(r);
           _places = [];
           _guiding = false;
         });
+      }
       return tr(
         'Маршрут ${(r.distance / 1000).toStringAsFixed(1)} км, примерно ${(r.duration / 60).ceil()} минут. Проверьте маршрут и нажмите «Начать».',
         'Бағыт ${(r.distance / 1000).toStringAsFixed(1)} км, шамамен ${(r.duration / 60).ceil()} минут. Бағытты тексеріп, «Бастау» түймесін басыңыз.',
@@ -353,8 +358,9 @@ class _CompanionScreenState extends State<CompanionScreen>
       );
       return;
     }
-    if (changed && progress.current != null)
+    if (changed && progress.current != null) {
       _say(progress.current!.instruction(kk));
+    }
   }
 
   Future<void> _stop() async {
@@ -364,12 +370,13 @@ class _CompanionScreenState extends State<CompanionScreen>
     await _positions?.cancel();
     _positions = null;
     _watchdog?.cancel();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _guiding = false;
         _listening = false;
         _last = tr('Остановлено', 'Тоқтатылды');
       });
+    }
   }
 
   Future<void> _listen() async {
@@ -406,12 +413,12 @@ class _CompanionScreenState extends State<CompanionScreen>
     if (!mounted) return;
     setState(() => _listening = true);
     await _microphone.listen(
-      localeId: kk ? 'kk_KZ' : 'ru_RU',
       onResult: (r) {
         if (mounted) setState(() => _command.text = r.recognizedWords);
         if (r.finalResult) _execute(r.recognizedWords);
       },
       listenOptions: SpeechListenOptions(
+        localeId: kk ? 'kk_KZ' : 'ru_RU',
         partialResults: true,
         cancelOnError: true,
       ),
@@ -498,7 +505,7 @@ class _CompanionScreenState extends State<CompanionScreen>
   );
   @override
   Widget build(BuildContext context) {
-    if (!_started)
+    if (!_started) {
       return Scaffold(
         body: SafeArea(
           child: Center(
@@ -550,6 +557,7 @@ class _CompanionScreenState extends State<CompanionScreen>
           ),
         ),
       );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Jaryq Jol'),

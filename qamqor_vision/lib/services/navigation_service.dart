@@ -22,8 +22,9 @@ class WalkStep {
   final String type, modifier, road;
   final double distance;
   String instruction(bool kk) {
-    if (type == 'arrive')
+    if (type == 'arrive') {
       return kk ? 'Межелі жерге жақындадыңыз' : 'Вы рядом с местом назначения';
+    }
     final directions = kk
         ? {
             'left': 'солға',
@@ -145,8 +146,9 @@ class NavigationService {
   }
 
   static WalkRoute parseRoute(Map<String, dynamic> data, Place to) {
-    if (data['code'] != 'Ok' || (data['routes'] as List).isEmpty)
+    if (data['code'] != 'Ok' || (data['routes'] as List).isEmpty) {
       throw StateError('no_route');
+    }
     final route = data['routes'][0];
     final points = (route['geometry']['coordinates'] as List)
         .map(
@@ -221,8 +223,9 @@ class RouteProgress {
     final latScale = 111320.0,
         lonScale = 111320.0 * math.cos(p.latitude * math.pi / 180);
     for (var i = 0; i < route.points.length - 1; i++) {
-      if (cumulative[i + 1] < along - 30 || cumulative[i] > along + 200)
+      if (cumulative[i + 1] < along - 30 || cumulative[i] > along + 200) {
         continue;
+      }
       final a = route.points[i], b = route.points[i + 1];
       final ax = (a.longitude - p.longitude) * lonScale,
           ay = (a.latitude - p.latitude) * latScale;
